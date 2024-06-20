@@ -16,3 +16,7 @@ CREATE TABLE profiles(
     birth_date DATE,
 );
 
+CREATE TABLE address(
+	users.id UNIQUE REFERENCE users,
+	address VARCHAR(255)
+);
