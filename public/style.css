@@ -1,0 +1,23 @@
+.hidden{
+    visibility: hidden;
+    
+}
+.form{
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: space-around;
+}
+#toggle{
+    display: flex;
+    justify-content: flex-end;
+    align-content: center;
+}
+
+.homeContainer{
+    display: flex;
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}

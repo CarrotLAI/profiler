@@ -17,6 +17,11 @@ CREATE TABLE profiles(
 );
 
 CREATE TABLE address(
-	users.id UNIQUE REFERENCE users,
-	address VARCHAR(255)
+    id INT PRIMARY KEY,
+	users_id INT UNIQUE,
+    street VARCHAR(255),
+    city VARCHAR(255),
+    state VARCHAR(255),
+    zip_code VARCHAR(255),
+    FOREIGN KEY (users.id) REFERENCES users(id)
 );

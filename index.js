@@ -18,9 +18,11 @@ const db = new pg.Client({
   })
 db.connect()
 
+// middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+// index page
 app.get("/", (req, res) => {
     res.render("index")
 })
@@ -28,15 +30,18 @@ app.get("/", (req, res) => {
 app.get("/home", async (req, res) => {
     const data = await showdata()
     res.render("home", {
-        data: data
+        data: data,
     })
 })
 
+// get user by id
 app.get("/user/:id", async (req, res) => {
     const id = req.params.id
+    // console.log(id)
     const data = await showdataById(id)
-    console.log(data)
-    res.render("user")
+    res.render("user", {
+        data: data
+    })
 })
 
 // verify login by searching user in the database
@@ -76,41 +81,89 @@ app.post("/signup", async (req, res) => {
     res.render("index")
 })
 
-app.post("/add", (req, res) => {
-    const fname = req.body.fname
-    const midame = req.body.midname
-    const lname = req.body.lname
-    const age = req.body.age
-    const birthdate = req.body.birthdate
-    const query = db.query(
-        "INSERT INTO profile(first_name, middle_name, last_name, age, birth_date) VALUES ($1, $2, $3, $4, $5)",
-        [fname, midame, lname, age, birthdate])
-    console.log("Data inserted successfully")
+app.post("/add", async (req, res) => {
+    const {
+        fname, 
+        midname, 
+        lname, 
+        birthday,
+        address
+    } = req.body
+    // calculate age from birthday
+    const fullyear = new Date(birthday).getFullYear()
+    const currYear = new Date().getFullYear()
+    const age = currYear - fullyear
+    // format date for database insertion
+    const currentDate = new Date(birthday);
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+
+    // insert data into profile table
+    const result = await db.query(
+                `INSERT INTO profile (first_name, middle_name, last_name, age, birth_date VALUES ($1, $2, $3, $4, $5)
+                RETURNING *`, [fname, midname, lname, age, formattedDate]
+            )
+    const user_id = result.rows[0].id
+    console.log(user_id)
     res.redirect("/home")
 })
 
-app.put("/edit/:key", (req, res) => {
-    const key = req.params.key //id of the selected row
-    const fname = req.body.fname
-    const midname = req.body.midname
-    const lname = req.body.lname
-    const currAddress = req.body.currAddress
-    const permanentAddress = req.body.permanentAddress
-    const age = req.body.age
-    const birthdate = req.body.birthdate
-    const query = db.query(
-        "UPDATE profile SET first_name = $1, middle_name = $2, last_name = $3, age = $4, birth_date = $5 WHERE id = $6",
-        [fname, midname, lname, age, birthdate, key])
+// edit user profile
+app.post("/edit", async (req, res) => {
+    const key = parseInt(req.body.id) //id of the selected row
+    const {
+        fname,
+        midname,
+        lname,
+        address,
+        birthday,
+    } = req.body;
+    console.log(key, fname, midname, lname, address, birthday)
+    const fullyear = new Date(birthday).getFullYear()
+    const currYear = new Date().getFullYear()
+    const age = currYear - fullyear
+    try{
+        await db.query("UPDATE profile SET first_name = $1, middle_name = $2, last_name = $3, a age = $4, birth_date = $5 WHERE id = $6",
+            [fname, midname, lname, age, birthday, key]
+         )
+    } catch(err) {
+        res.status(500).send("Internal Server Error")
+    }
+    // const query = db.query(
+    //     "UPDATE profile SET first_name = $1, middle_name = $2, last_name = $3, address = $4, birth_date = $5 WHERE id = $6",
+    //     [fname, midname, lname, address, birthdate, key])
     console.log("Data updated successfully")
     res.redirect("/home")
 })
 
-app.delete("/delete/:key", (req, res) => {
-    const deleteRequest = []
-    const key = req.params.id
-    key.push(deleteRequest)
-    console.log(deleteRequest)
+// delete selected user profile
+app.post("/delete", async (req, res) => {
+    const key = parseInt(req.body.deleteId)
+    console.log(key)
+    try{
+        await db.query("DELETE FROM profile WHERE id = $1", [key])
+        console.log("User deleted successfully")
+    }catch(err) {
+        console.log(err);
+        res.status(500).send("Internal Server Error")
+    }
+    res.redirect("/home")
 })
+
+// delete multiple addresses of the selected user
+app.post("/deleteMultiple", async (req, res) => {
+    // let ids = req.body.deleteIds.split(',').map(Number)
+    let ids = []
+    try{
+        await db.query("DELETE FROM profile WHERE id IN ($1)", [ids])
+    }catch(err) {
+        console.log(err);
+        res.status(500).send("Internal Server Error")
+    }
+})
+
 app.listen(port, () => {
     console.log("Server is running on port 3000")
 })
@@ -120,16 +173,40 @@ async function verifyLogin(username, password) {
     
 }
 async function showdata(){
-    const query = await db.query("SELECT * FROM profile");
     let data = [];
-    query.rows.forEach( rows => {
-        data.push(rows)
-    });
+    try{
+        const query = await db.query(
+            "SELECT id, first_name, middle_name, last_name, age, birth_date FROM profile JOIN address ON profile.id = address.user_id ORDER BY id DESC"
+        );
+        query.rows.forEach( rows => {
+            data.push(rows)        
+        });
+    }catch(err) {
+        console.log(err)
+        
+    } 
     return data
 }
 async function showdataById(id){
-    const query = await db.query("SELECT * FROM profile WHERE id = $1", [id]);
-    return query.rows[0]
+    let userData = [];
+    try{
+        const query = await db.query("SELECT * FROM profile WHERE id = $1", [id]);
+        query.rows.forEach(rows => {
+            userData.push(rows)
+        }); 
+    }catch(err) {
+        console.log(err)
+        return []
+    }
+    return userData
+}
+
+function searchProfile(search){
+    try{
+        await db.query(
+            "SELECT * profile WHERE fname LIKE  $1 OR midname LIKE $1 OR lname LIKE $1",'"
+        )
+    }
 }
 
 // async function deleteUserAddress(id) {
@@ -137,19 +214,3 @@ async function showdataById(id){
 //     console.log("User deleted successfully")
 //     return deletequery
 // }
-
- // const hashedPassword = bcrypt.hashSync(password, 10)
-    
-    // db.query("SELECT * FROM users WHERE username = $1", [username], (err, result) => {
-    //     if (err) throw err
-    //     if (result.rows.length === 0) {
-    //         res.send("User not found")
-    //     } else {
-    //         const user = result.rows[0]
-    //         if (bcrypt.compareSync(password, user.password)) {
-    //             res.send("Login successful")
-    //         } else {
-    //             res.send("Incorrect password")
-    //         }
-    //     }
-    // })

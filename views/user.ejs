@@ -1,14 +1,47 @@
-<div>
-    <section>
-        <form action="/edit" method="put">
-            <input type="text" name="fname" placeholder="First Name">
-            <input type="text" name="midname" placeholder="Middle Name">
-            <input type="text" name="lname" placeholder="Last Name">
-            <input type="text" name="current_addres" placeholder="Current Address">
-            <input type="text" name="permanent_address" placeholder="Permanent Adrress">
-            <input type="number" name="age" placeholder="Age">
-            <input type="date" name="birthday" placeholder="Birthday">
-            <input type="submit" name="submit" value="Confirm">
-        </form>
-    </section>
+<%- include("partials/header.ejs") -%>
+<div class="container">
+    <% if(locals.data){ data.forEach(user =>{ %>
+    <!-- VIewing -->
+     <div class="container">
+        <button onclick="EditProfile('<%= user.id %>')">Edit</button>
+        <li style="list-style: none;">
+            <label for="">Full Name</label>
+            <ul><%- user.first_name %> <%- user.middle_name %> <%- user.last_name %></ul>
+            <label for="">Age</label>
+            <ul><%- user.age %></ul>
+            <label for="">Birth Day</label>
+            <ul><%- user.birth_date %></ul>
+            <label for="">Adresses</label>
+            <ul><%- user.addresses %></ul>
+        </li>
+     </div>
+
+    <!-- Updating -->
+        <section id="addData" class="container">
+            <form action="/edit" method="post">
+                <input type="text" name="id" value="<%- user.id %>" hidden>
+                <input type="text" name="fname" placeholder="First Name" value="<%- user.first_name %>">
+                <input type="text" name="midname" placeholder="Middle Name" value="<%- user.middle_name %>">
+                <input type="text" name="lname" placeholder="Last Name" value="<%- user.last_name %>">
+                <input type="text" name="address" placeholder="Address" value="<%- user.address %>">
+                <input type="button" onclick="addAddress()" value="add address" id="address">
+                <input type="number" name="age" placeholder="Age" value="<%- user.age %>" disabled>
+                <input type="date" name="birthday" placeholder="Birthday" value="<%- user.birth_date %>">
+                <input type="submit" name="submit" value="Confirm">
+            </form>
+        </section>
+    <%}) } %>
 </div>
+<script>
+    function addAddress() {
+        var x = document.createElement("INPUT");
+        x.setAttribute("type", "text");
+        x.setAttribute("name", "current_addres");
+        x.setAttribute("placeholder", "Current Address");
+        document.getElementById("address").appendChild(x);
+    }
+    function EditProfile(id) {
+        document.getElementById("addData").classList.toggle("hidden");
+        document.getElementById(id).classList.toggle("hidden");
+    }
+</script>
