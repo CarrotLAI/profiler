@@ -13,7 +13,7 @@ const db = new pg.Client({
     user: "postgres",
     host: "localhost",
     database: "biodata",
-    password: "12345",
+    password: "1234",
     port: 5432,
   })
 db.connect()
@@ -49,7 +49,7 @@ app.post("/login", async (req, res) => {
     const {username, password  } = req.body
     const result = verifyLogin(username, password)
     try {
-        const query = await db.query("SELECT * FROM users WHERE username = $1 AND pass = $2", [username, password])
+        const query = await db.query("SELECT * FROM users WHERE username = $1 AND password = $2", [username, password])
         if (!query.rows[0]) {
             const errorMessage = "Invalid credentials"
             res.send(errorMessage)
@@ -69,7 +69,7 @@ app.post("/signup", async (req, res) => {
     const password = req.body.password
     // const hashedPassword = bcrypt.hashSync(password, 10)
     try{
-        const query = await db.query("INSERT INTO users (username, pass) VALUES ($1, $2)", [username, password])
+        const query = await db.query("INSERT INTO users (username, password) VALUES ($1, $2)", [username, password])
         console.log("User created successfully")
     }catch(err) {
         console.log(err);
@@ -87,7 +87,10 @@ app.post("/add", async (req, res) => {
         midname, 
         lname, 
         birthday,
-        address
+        street,
+        city,
+        province,
+        zipcode
     } = req.body
     // calculate age from birthday
     const fullyear = new Date(birthday).getFullYear()
@@ -102,10 +105,14 @@ app.post("/add", async (req, res) => {
 
     // insert data into profile table
     const result = await db.query(
-                `INSERT INTO profile (first_name, middle_name, last_name, age, birth_date VALUES ($1, $2, $3, $4, $5)
-                RETURNING *`, [fname, midname, lname, age, formattedDate]
+                "INSERT INTO profile (first_name, middle_name, last_name, age, birth_date) VALUES($1, $2, $3, $4, $5) RETURNING *", 
+                [fname, midname, lname, age, formattedDate]
             )
     const user_id = result.rows[0].id
+    console.log(user_id, result.rows[0])
+    await db.query("INSERT INTO address(user_id, street, city, province, zip_code) VALUES ($1, $2, $3, $4, $5)",
+        [user_id, street, city, province, zipcode]
+    )
     console.log(user_id)
     res.redirect("/home")
 })
@@ -176,7 +183,7 @@ async function showdata(){
     let data = [];
     try{
         const query = await db.query(
-            "SELECT id, first_name, middle_name, last_name, age, birth_date FROM profile JOIN address ON profile.id = address.user_id ORDER BY id DESC"
+            "SELECT id, first_name, middle_name, last_name, age, birth_date FROM profile ORDER BY id DESC"
         );
         query.rows.forEach( rows => {
             data.push(rows)        
@@ -201,13 +208,13 @@ async function showdataById(id){
     return userData
 }
 
-function searchProfile(search){
-    try{
-        await db.query(
-            "SELECT * profile WHERE fname LIKE  $1 OR midname LIKE $1 OR lname LIKE $1",'"
-        )
-    }
-}
+// function searchProfile(search){
+//     // try{
+//     //     await db.query(
+//     //         "SELECT * profile WHERE fname LIKE  $1 OR midname LIKE $1 OR lname LIKE $1",'"
+//     //     )
+//     // }
+// }
 
 // async function deleteUserAddress(id) {
 //     const deletequery= await db.query("DELETE FROM profile WHERE id = $1", [id])
